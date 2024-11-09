@@ -1,17 +1,17 @@
 import pandas as pd
 import re
 import logging
-from smtplib import SMTP, SMTPException
 import dns.resolver
 import smtplib
 
-# Buat liat LOG nya liat file email_check.log
+# Logging setup
 logging.basicConfig(
     filename='email_check.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# Fungsi untuk mendapatkan MX record
 def get_mx_record(domain):
     try:
         logging.info(f"Mencari MX record untuk domain: {domain}")
@@ -32,14 +32,13 @@ def get_mx_record(domain):
         logging.error(f"Error saat mencari MX record untuk {domain}: {e}")
         return None
 
+# Fungsi untuk validasi format email
 def is_valid_email_format(email):
     email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
     return re.match(email_regex, email) is not None
 
+# Fungsi untuk mengecek status aktif email dengan MX record
 def is_email_active(email):
-    """
-    Mengecek apakah email aktif dengan menghubungi server MX.
-    """
     domain = email.split('@')[-1]
     mx_record = get_mx_record(domain)
     if not mx_record:
@@ -52,8 +51,6 @@ def is_email_active(email):
             smtp.ehlo_or_helo_if_needed()
             smtp.mail('me@rrens.me')
             code, response = smtp.rcpt(email)
-            print(f"Code: {code}")
-            print(f"Response: {response}")
             if code == 250:
                 logging.info(f"Email aktif: {email}")
                 return True
@@ -67,27 +64,31 @@ def is_email_active(email):
         logging.error(f"Gagal terhubung untuk email {email}: {e}")
         return False
 
-
+# Nama file input dan output
 input_file = 'source.xlsx'
-output_file = 'output_cleaned.csv'
+output_file = 'output_cleaned.xlsx'
 
+# Membaca data dari file Excel
 df = pd.read_excel(input_file)
 logging.info("File loaded successfully")
 
-df = df.dropna(subset=['Nama', 'Email', 'Nomor Telephone', 'SMA/SMK/MA'])
+# Menghapus baris dengan nilai kosong pada kolom wajib
+df = df.dropna(subset=['Nama', 'Email', 'Nomor Telephone', 'Type'])
 logging.info("Rows with empty required fields dropped")
 
+# Memeriksa format email dan hanya mengambil yang valid
 df['email_format_valid'] = df['Email'].apply(is_valid_email_format)
-
 df = df[df['email_format_valid']]
 logging.info("Rows with invalid email formats dropped")
 
+# Memeriksa apakah email aktif dan hanya menyimpan yang aktif
 df['email_active'] = df['Email'].apply(is_email_active)
-
 df = df[df['email_active']]
 logging.info("Inactive emails removed")
 
+# Menghapus kolom tambahan yang digunakan untuk validasi
 df = df.drop(columns=['email_format_valid', 'email_active'])
 
-df.to_csv(output_file, index=False)
+# Menyimpan hasil yang sudah dibersihkan ke file CSV
+df.to_excel(output_file, index=False)
 print(f"Data yang bersih uda ada disini {output_file}")

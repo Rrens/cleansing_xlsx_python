@@ -89,7 +89,7 @@ def check_email(source):
     df = source
     logging.info("File loaded successfully")
 
-    df = df.dropna(subset=['Nama', 'Email', 'Nomor Telephone', 'SMA/SMK/MA'])
+    df = df.dropna(subset=['Nama', 'Email', 'Nomor Telephone', 'Type'])
     logging.info("Rows with empty required fields dropped")
 
     df['email_format_valid'] = df['Email'].apply(is_valid_email_format)
